@@ -4,7 +4,7 @@ A single-page tool for assembling a house ruleset for **Presidents** (a.k.a. Scu
 
 Start from the base game everyone already knows. Toggle mechanics on. The rule sheet rewrites itself, and tells you what each addition costs in teaching time and what it quietly breaks.
 
-**Live:** _(add your Vercel URL here)_
+**Live:** <https://presidents-zeta.vercel.app>
 
 ---
 
@@ -49,12 +49,16 @@ python3 -m http.server 8000
 
 ## Deploy
 
+Hosted on Vercel with the GitHub repo connected, so a push to `main` deploys to production and any other branch gets a preview URL.
+
+To deploy by hand:
+
 ```bash
 npx vercel            # preview
-npx vercel --prod     # production
+npm run deploy        # production (npx vercel --prod)
 ```
 
-Or import the repo at [vercel.com/new](https://vercel.com/new) — framework preset **Other**, no build command, output directory `.`.
+Project settings: framework preset **Other**, no build command, output directory `.`.
 
 ## License
 
