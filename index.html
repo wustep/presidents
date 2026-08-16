@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presidents — Ruleset Builder</title>
+<meta name="description" content="Build a house ruleset for the card game Presidents. Start from the base game, add mechanics one at a time, and get a rule sheet that tells you what each one costs.">
+<meta name="theme-color" content="#0b201a">
+<meta property="og:title" content="Presidents — Ruleset Builder">
+<meta property="og:description" content="Start from the base game. Add mechanics. Get a rule sheet that rewrites itself.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%230b201a'/><text x='16' y='23' font-size='20' text-anchor='middle' fill='%23bf9a55' font-family='Georgia,serif'>A</text></svg>">
+<style>
+  :root{
+    --felt:#14372c;
+    --felt-dark:#0b201a;
+    --felt-line:rgba(247,244,236,.10);
+    --card:#f7f4ec;
+    --card-shade:#ebe5d6;
+    --card-deep:#ded6c3;
+    --ink:#14120f;
+    --ink-mute:#6d6759;
+    --ink-faint:#9c9585;
+    --red:#9e1f26;
+    --red-soft:rgba(158,31,38,.09);
+    --gold:#bf9a55;
+    --rule:rgba(20,18,15,.13);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --lbl:600 9.5px/1 var(--mono);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--felt-dark);
+    background-image:radial-gradient(ellipse 130% 90% at 50% -15%, #1d4a3a 0%, var(--felt) 42%, var(--felt-dark) 100%);
+    background-attachment:fixed;
+    color:var(--card);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  .wrap{max-width:1240px;margin:0 auto;padding:38px 22px 100px}
+  .lbl{font:var(--lbl);letter-spacing:.2em;text-transform:uppercase}
+  .print-only{display:none}
+
+  /* ─────────── masthead ─────────── */
+  .masthead{border-bottom:1px solid var(--felt-line);padding-bottom:24px;margin-bottom:24px}
+  .eyebrow{font:var(--lbl);letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin:0 0 12px}
+  h1{
+    font-family:var(--serif);font-weight:400;font-size:clamp(36px,6.4vw,62px);
+    letter-spacing:-.022em;line-height:.96;margin:0;color:#fdfbf5;
+  }
+  h1 em{font-style:italic;color:var(--gold);font-size:.5em;vertical-align:.2em;margin:0 .1em}
+  .dek{margin:14px 0 0;max-width:60ch;color:rgba(247,244,236,.7);font-size:15px}
+
+  /* ─────────── signature: the rank ladder ─────────── */
+  .ladder{margin:24px 0 0;padding:15px 16px 13px;border:1px solid var(--felt-line);border-radius:5px;background:rgba(0,0,0,.2)}
+  .ladder-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:11px}
+  .ladder-head .lbl{color:rgba(247,244,236,.5)}
+  .ladder-state{font:var(--lbl);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .ranks{display:flex;gap:5px;flex-wrap:wrap;perspective:900px}
+  .rank{
+    flex:1 1 auto;min-width:32px;text-align:center;
+    font-family:var(--serif);font-size:18px;padding:8px 2px 7px;border-radius:3px;
+    background:var(--card);color:var(--ink);border:1px solid rgba(0,0,0,.3);
+    box-shadow:0 1px 2px rgba(0,0,0,.3);
+    transition:transform .45s cubic-bezier(.2,.85,.3,1);
+  }
+  .rank.weak{color:var(--ink-faint)}
+  .rank.strong{color:var(--red);border-color:rgba(158,31,38,.4)}
+  .ranks.flipped .rank{transform:rotateY(360deg)}
+  .ladder-note{margin:11px 0 0;font-size:12.5px;color:rgba(247,244,236,.52);max-width:78ch}
+  .ladder-note b{color:rgba(247,244,236,.85);font-weight:600}
+
+  /* ─────────── presets ─────────── */
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0 26px;align-items:stretch}
+  .presets .lbl{color:rgba(247,244,236,.45);align-self:center;margin-right:2px}
+  .preset{
+    font-family:var(--sans);font-size:12.5px;font-weight:500;text-align:left;
+    padding:7px 14px;border-radius:3px;cursor:pointer;
+    background:transparent;color:rgba(247,244,236,.85);
+    border:1px solid rgba(247,244,236,.24);
+    transition:background .15s,border-color .15s,color .15s;
+  }
+  .preset:hover{background:rgba(247,244,236,.09);border-color:rgba(247,244,236,.5)}
+  .preset[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#221806;font-weight:600}
+  .preset small{display:block;font:var(--lbl);letter-spacing:.08em;text-transform:none;opacity:.6;font-weight:400;margin-top:3px}
+  .preset:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  /* ─────────── layout ─────────── */
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,430px);gap:24px;align-items:start}
+  @media (max-width:940px){.layout{grid-template-columns:1fr}}
+  .panel{
+    background:var(--card);color:var(--ink);border-radius:5px;
+    box-shadow:0 16px 38px rgba(0,0,0,.36), 0 1px 0 rgba(255,255,255,.55) inset;
+  }
+
+  /* ─────────── table settings + hierarchy rail ─────────── */
+  .settings{padding:17px 19px 19px;margin-bottom:18px}
+  .settings-grid{display:grid;grid-template-columns:110px minmax(0,1fr) minmax(0,1fr);gap:15px}
+  @media (max-width:620px){.settings-grid{grid-template-columns:1fr}}
+  .field label{display:block;font:var(--lbl);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:6px}
+  .field select,.field input{
+    width:100%;font-family:var(--sans);font-size:13.5px;color:var(--ink);
+    padding:8px 9px;border:1px solid var(--rule);border-radius:3px;background:#fff;
+  }
+  .field select:focus,.field input:focus{outline:2px solid var(--gold);outline-offset:1px}
+
+  .rail{margin-top:18px;padding-top:16px;border-top:1px solid var(--rule)}
+  .rail-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .rail-head .lbl{color:var(--ink-mute)}
+  .rail-head .rail-sub{font-size:11.5px;color:var(--ink-faint)}
+  .seats{display:flex;gap:5px;align-items:stretch}
+  .seat{
+    flex:1;min-width:0;padding:8px 6px 7px;border-radius:3px;text-align:center;
+    background:var(--card-shade);border:1px solid var(--rule);
+  }
+  .seat .t{font-family:var(--serif);font-size:12.5px;line-height:1.15;display:block}
+  .seat .n{font:var(--lbl);letter-spacing:.12em;color:var(--ink-faint);margin-top:4px;display:block}
+  .seat.top{background:var(--gold);border-color:var(--gold);color:#221806}
+  .seat.top .n{color:rgba(34,24,6,.6)}
+  .seat.bottom{background:var(--ink);border-color:var(--ink);color:var(--card)}
+  .seat.bottom .n{color:rgba(247,244,236,.5)}
+  .flow{
+    margin-top:8px;display:flex;align-items:center;gap:10px;
+    font-size:11.5px;color:var(--ink-mute);
+  }
+  .flow-bar{flex:1;height:1px;background:var(--rule);position:relative}
+  .flow-bar::before,.flow-bar::after{content:"";position:absolute;top:-3px;width:0;height:0;border:3.5px solid transparent}
+  .flow-bar::before{left:0;border-right-color:var(--red);border-left:0}
+  .flow-bar::after{right:0;border-left-color:var(--gold);border-right:0}
+  .flow.dead .flow-bar{background:repeating-linear-gradient(90deg,var(--rule) 0 4px,transparent 4px 8px)}
+  .flow.dead .flow-bar::before,.flow.dead .flow-bar::after{display:none}
+  .flow b{font-weight:600;color:var(--ink)}
+
+  /* ─────────── mechanics ─────────── */
+  .group{margin-bottom:18px;overflow:hidden}
+  .group-head{padding:15px 19px 13px;border-bottom:1px solid var(--rule);background:var(--card-shade);display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  .group-head h2{margin:0;font-family:var(--serif);font-size:19.5px;font-weight:400;letter-spacing:-.012em}
+  .group-head p{margin:4px 0 0;font-size:12.5px;color:var(--ink-mute);max-width:56ch}
+  .group-count{flex:none;font:var(--lbl);letter-spacing:.14em;color:var(--ink-faint);white-space:nowrap}
+  .group-count.live{color:var(--red)}
+
+  .mech{display:flex;gap:14px;padding:14px 19px;border-bottom:1px solid var(--rule);cursor:pointer;align-items:flex-start;transition:background .12s,opacity .18s}
+  .mech:last-child{border-bottom:0}
+  .mech:hover{background:var(--red-soft)}
+  .mech.on{background:var(--red-soft);box-shadow:inset 3px 0 0 var(--red)}
+  .mech.blocked{opacity:.45}
+  .mech:focus-visible{outline:2px solid var(--gold);outline-offset:-3px}
+
+  /* token: a real card, or a rule stamped on the table */
+  .tok{flex:none;width:32px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;font-family:var(--serif)}
+  .tok.card{background:#fff;border:1px solid var(--rule);border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.14);color:var(--ink-faint);transition:color .15s,border-color .15s}
+  .mech.on .tok.card{color:var(--ink);border-color:rgba(20,18,15,.3)}
+  .tok.card .r{font-size:15px;letter-spacing:-.03em}
+  .tok.card .s{font-size:12px;margin-top:2px}
+  .tok.card .s.red{color:var(--red)}
+  .tok.stamp{border:1px dashed var(--ink-faint);border-radius:3px;color:var(--ink-faint);font-family:var(--mono);font-size:14px;transition:color .15s,border-color .15s}
+  .mech.on .tok.stamp{color:var(--red);border-color:var(--red);border-style:solid}
+
+  .mech-body{flex:1;min-width:0}
+  .mech-title{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .mech-title h3{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.006em}
+  .jp{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em}
+  .mech-tag{margin:4px 0 0;font-size:12.5px;color:var(--ink-mute);line-height:1.45}
+  .mech-note{margin:6px 0 0;font-size:11.5px;line-height:1.4;color:var(--ink-faint)}
+  .mech-note.hot{color:var(--red)}
+
+  .cost{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px;padding-top:3px}
+  .chips{display:flex;gap:3px}
+  .chip{width:6px;height:6px;border-radius:50%;background:var(--card-deep)}
+  .chip.filled{background:var(--ink-faint)}
+  .mech.on .chip.filled{background:var(--red)}
+  .sw{width:38px;height:21px;border-radius:999px;background:var(--card-deep);position:relative;transition:background .18s}
+  .sw::after{content:"";position:absolute;top:2.5px;left:2.5px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .18s}
+  .mech.on .sw{background:var(--red)}
+  .mech.on .sw::after{transform:translateX(17px)}
+
+  /* ─────────── the rule sheet ─────────── */
+  .sheet-wrap{position:sticky;top:20px;max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+  @media (max-width:940px){.sheet-wrap{position:static;max-height:none}}
+  .sheet{display:flex;flex-direction:column;min-height:0}
+  .sheet-top{padding:19px 21px 16px;border-bottom:2px solid var(--ink);flex:none}
+  .sheet-top .eyebrow{color:var(--ink-mute);margin-bottom:7px}
+  .sheet-top h2{margin:0;font-family:var(--serif);font-size:23px;font-weight:400;letter-spacing:-.018em}
+  .gauge{margin-top:14px}
+  .gauge-row{display:flex;justify-content:space-between;gap:10px;font:var(--lbl);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:6px}
+  .gauge-track{height:3px;background:var(--card-deep);border-radius:2px;overflow:hidden}
+  .gauge-fill{height:100%;background:var(--red);width:0;transition:width .35s ease}
+  .gauge-legend{margin:7px 0 0;font-size:11.8px;color:var(--ink-mute);line-height:1.4}
+
+  .sheet-body{padding:2px 21px 14px;overflow-y:auto;min-height:0;flex:1}
+  @media (max-width:940px){.sheet-body{overflow:visible}}
+  .sec{padding:14px 0;border-bottom:1px solid var(--rule)}
+  .sec:last-child{border-bottom:0}
+  .sec h3{margin:0 0 8px;font:var(--lbl);letter-spacing:.2em;text-transform:uppercase;color:var(--red);display:flex;gap:8px}
+  .sec h3 span{color:var(--ink-faint)}
+  .sec p{margin:0 0 9px;font-family:var(--serif);font-size:14px;line-height:1.56}
+  .sec p:last-child{margin-bottom:0}
+  .sec .name{font-variant:small-caps;letter-spacing:.04em;font-weight:600}
+
+  .notes{background:var(--card-shade);padding:15px 21px 17px;border-top:1px solid var(--rule);flex:none;max-height:26vh;overflow-y:auto}
+  @media (max-width:940px){.notes{max-height:none;overflow:visible}}
+  .notes h3{margin:0 0 9px;font:var(--lbl);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-mute)}
+  .note{display:flex;gap:9px;font-size:12.3px;line-height:1.48;margin-bottom:10px}
+  .note:last-child{margin-bottom:0}
+  .note .mk{color:var(--red);flex:none;font-family:var(--mono);font-size:10px;padding-top:2px}
+
+  .sheet-actions{display:flex;gap:8px;padding:14px 21px 17px;border-top:1px solid var(--rule);flex:none}
+  .btn{flex:1;font-family:var(--sans);font-size:12.5px;font-weight:600;padding:9px 10px;border-radius:3px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--card);transition:opacity .15s}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn:hover{opacity:.82}
+  .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  .colophon{margin-top:30px;font-size:12.3px;color:rgba(247,244,236,.44);max-width:76ch;line-height:1.65}
+  .colophon b{color:rgba(247,244,236,.68);font-weight:600}
+  .colophon a{color:rgba(247,244,236,.68)}
+
+  #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:var(--ink);color:var(--card);font-size:12.5px;padding:10px 17px;border-radius:3px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+  /* ─────────── print: the sheet becomes a rulebook page ─────────── */
+  @media print{
+    body{background:#fff;color:#000;font-family:var(--serif)}
+    .wrap{max-width:none;padding:0}
+    .masthead,.presets,main,.sheet-actions,.gauge,.colophon,#toast{display:none!important}
+    .print-only{display:block}
+    .layout{display:block}
+    .sheet-wrap{position:static;max-height:none}
+    .panel{box-shadow:none;background:#fff}
+    .sheet-top{border-bottom:2px solid #000;padding:0 0 12px}
+    .sheet-body,.notes{overflow:visible;max-height:none;padding:0;background:#fff}
+    .sec{break-inside:avoid}
+    .notes{border-top:1px solid #999;margin-top:14px;padding-top:12px}
+    .sec h3,.notes h3{color:#000}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">House rules, assembled</p>
+    <h1>Presidents <em>&amp;</em> Scum</h1>
+    <p class="dek">Start with the bare game everyone already knows. Add mechanics one at a time and the rule sheet rewrites itself — including what each one costs you in teaching time, and what it quietly breaks.</p>
+
+    <section class="ladder" aria-labelledby="ladderLbl">
+      <div class="ladder-head">
+        <span class="lbl" id="ladderLbl">Rank order, weakest to strongest</span>
+        <span class="ladder-state" id="ladderState">Standard</span>
+      </div>
+      <div class="ranks" id="ranks"></div>
+      <p class="ladder-note" id="ladderNote"></p>
+    </section>
+  </header>
+
+  <div class="presets">
+    <span class="lbl">Start from</span>
+    <button class="preset" data-preset="base">Base game<small>nothing extra</small></button>
+    <button class="preset" data-preset="classic">Classic American<small>how most tables play</small></button>
+    <button class="preset" data-preset="daifugo">Daifugō<small>the Japanese original</small></button>
+    <button class="preset" data-preset="fast">Fast and loud<small>big group, short hands</small></button>
+    <button class="preset" data-preset="everything">Everything on<small>at your own risk</small></button>
+  </div>
+
+  <div class="layout">
+    <main>
+      <section class="panel settings">
+        <div class="settings-grid">
+          <div class="field">
+            <label for="players">Players</label>
+            <input type="number" id="players" min="3" max="12" value="5" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="exchange">The exchange</label>
+            <select id="exchange">
+              <option value="none">No exchange</option>
+              <option value="light">1 card, top and bottom only</option>
+              <option value="standard" selected>2 and 1 — standard</option>
+              <option value="steep">3 and 2 — steep</option>
+              <option value="tribute">Unequal: Scum gives 2, gets 1 back</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="passRule">Passing</label>
+            <select id="passRule">
+              <option value="locked" selected>A pass locks you out of the trick</option>
+              <option value="reentry">You may re-enter on your next turn</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="rail">
+          <div class="rail-head">
+            <span class="lbl">The hierarchy</span>
+            <span class="rail-sub" id="railSub"></span>
+          </div>
+          <div class="seats" id="seats"></div>
+          <div class="flow" id="flow"><span id="flowLeft"></span><span class="flow-bar"></span><span id="flowRight"></span></div>
+        </div>
+      </section>
+
+      <div id="groups"></div>
+    </main>
+
+    <aside class="sheet-wrap">
+      <section class="panel sheet">
+        <div class="sheet-top">
+          <p class="eyebrow">Your rule sheet</p>
+          <h2 id="sheetTitle">The base game</h2>
+          <p class="print-only" id="printMeta" style="font:11px var(--mono);letter-spacing:.1em;text-transform:uppercase;margin:6px 0 0"></p>
+          <div class="gauge">
+            <div class="gauge-row"><span id="gaugeLabel">Kitchen table</span><span id="gaugeTeach">4 min to teach</span></div>
+            <div class="gauge-track"><div class="gauge-fill" id="gaugeFill"></div></div>
+            <p class="gauge-legend" id="gaugeLegend"></p>
+          </div>
+        </div>
+        <div class="sheet-body" id="sheetBody"></div>
+        <div class="notes" id="notesBox"></div>
+        <div class="sheet-actions">
+          <button class="btn" id="copyBtn">Copy rule sheet</button>
+          <button class="btn ghost" id="shareBtn">Copy link</button>
+          <button class="btn ghost" id="printBtn">Print</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <p class="colophon">
+    The game travels under a lot of names — <b>Presidents, Scum, Asshole, Capitalism, Bum, Landlord</b> — and nearly all of them descend from the Japanese climbing game <b>Daifugō</b> (大富豪), which is why the sharpest mechanics here still carry their Japanese names. Climbing games share a spine: shed your hand, match the count, beat the rank. Almost every variant is an argument about how easily you should be able to escape the hierarchy that the exchange keeps rebuilding.
+  </p>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+const RANKS = ["3","4","5","6","7","8","9","10","J","Q","K","A","2"];
+
+/* kind: "card" → the rule is printed on a specific card. "stamp" → it lives on the table. */
+const GROUPS = [
+  {
+    id:"cards", name:"Cards with powers",
+    blurb:"Individual ranks that do something other than sit there being high.",
+    items:[
+      { id:"twosClear", kind:"card", r:"2", s:"♦", name:"Twos wipe the pile", cost:1,
+        tag:"Play a two on anything, any time. The pile clears and you lead again.",
+        rule:"A two — or any set of twos — may be played on top of anything, regardless of the count on the table. The trick ends immediately: clear the pile face-down and the player who laid the two leads the next one." },
+      { id:"eightsClear", kind:"card", r:"8", s:"♣", name:"Eight-cut", jp:"八切り", cost:1,
+        tag:"An eight ends the trick the moment it lands. Nobody gets a response.",
+        rule:"Playing an eight ends the trick on the spot. It must still be a legal play — same count, higher rank — but once it lands nobody may answer it. Clear the pile and the player who cut leads again." },
+      { id:"jokers", kind:"card", r:"★", s:"", name:"Add two jokers", cost:1,
+        tag:"Jokers outrank everything, including twos. Singles only — they can't be paired.",
+        rule:"Shuffle two jokers into the deck. A joker outranks every card and may be played alone onto any single card. Jokers cannot be combined with each other or with anything else into a set." },
+      { id:"spadeThree", kind:"card", r:"3", s:"♠", name:"Three of spades counters", jp:"スペ3", cost:2, requires:["jokers"],
+        tag:"The weakest card in the deck is the only thing that beats a lone joker.",
+        rule:"A single joker can be beaten by the three of spades and by nothing else. Doing so ends the trick: clear the pile and the player who countered leads." },
+      { id:"sevensGive", kind:"card", r:"7", s:"♥", name:"Seven gift", jp:"7渡し", cost:2,
+        tag:"After playing sevens, pass that many cards face-down to the next player.",
+        rule:"After playing sevens, pass that many cards face-down from your hand to the next player in turn order. You choose which. They enter that player's hand without being shown to the table." },
+      { id:"ninesReverse", kind:"card", r:"9", s:"♠", name:"Nine reverse", jp:"9リバース", cost:1,
+        tag:"Turn order flips direction until the pile clears.",
+        rule:"Playing nines reverses the direction of play for the rest of the trick. Direction resets to clockwise when the pile is cleared." },
+      { id:"fivesSkip", kind:"card", r:"5", s:"♣", name:"Five skip", jp:"5飛び", cost:1,
+        tag:"Skip the next player. A pair of fives skips two.",
+        rule:"Playing fives skips the next player in turn order, one player per five laid. Skipped players do not get the chance to play or pass on that turn." }
+    ]
+  },
+  {
+    id:"four", name:"What four of a kind does",
+    blurb:"Every tradition wants this trigger to do something dramatic, and they disagree about what. Pick a lane.",
+    items:[
+      { id:"fourBomb", kind:"card", r:"4", s:"♠", name:"Bombs clear the table", cost:1, conflicts:["revolution"],
+        tag:"Drop all four of a rank at once, on anything, and the pile is gone.",
+        rule:"All four cards of a single rank may be played together at any time, on any pile, regardless of the count or rank on the table. The trick ends immediately: clear the pile and the bomber leads." },
+      { id:"completeSet", kind:"stamp", g:"∴", name:"Bombs can be built", cost:2, requires:["fourBomb"], conflicts:["revolution"],
+        tag:"If the fourth card of a rank lands on the pile across several turns, whoever laid it clears.",
+        rule:"A bomb can also be assembled on the table. If the cards showing on the pile amount to all four of a rank, the trick ends immediately and the player who laid the final card clears the pile and leads." },
+      { id:"revolution", kind:"card", r:"4", s:"♦", name:"Revolution", jp:"革命", cost:3, conflicts:["fourBomb","completeSet"],
+        tag:"Four of a kind inverts the rank order. Threes become the best cards in the game.",
+        rule:"Playing four cards of the same rank triggers a revolution: the rank order inverts for the rest of the hand, so threes become the strongest card and twos the weakest. A second revolution restores the original order. Cards keep whatever special powers they had — only the ordering flips." }
+    ]
+  },
+  {
+    id:"structure", name:"How a trick is played",
+    blurb:"These reshape the core loop rather than bolting exceptions onto it. Highest teaching cost, highest payoff.",
+    items:[
+      { id:"suitsOrder", kind:"stamp", g:"♠", name:"Suits break ties", cost:2,
+        tag:"Spades beat hearts beat diamonds beat clubs. Matching rank in a higher suit now takes the pile.",
+        rule:"Suits are ranked: spades beat hearts, hearts beat diamonds, diamonds beat clubs. A play of equal rank but higher suit beats the pile. For sets of more than one card, compare the highest suit in each set." },
+      { id:"shibari", kind:"stamp", g:"§", name:"Suit lock", jp:"縛り", cost:3,
+        tag:"Two plays of the same suit back to back locks that suit for the rest of the trick.",
+        rule:"If two consecutive plays in a trick share a suit, that suit locks: every later play in the trick must be of that suit as well as higher in rank. The lock dies when the pile clears. Say \"lock\" out loud when it triggers — it is very easy to miss." },
+      { id:"sequences", kind:"stamp", g:"≡", name:"Runs count as a play", jp:"階段", cost:3,
+        tag:"Three or more consecutive ranks in one suit play as a single unit.",
+        rule:"Three or more cards of consecutive rank in the same suit may be played as one unit, beaten only by a run of the same length starting higher. Runs and same-rank sets never mix: whichever is led defines the trick." },
+      { id:"skipOnMatch", kind:"stamp", g:"=", name:"Match it, skip them", cost:1,
+        tag:"Play the exact rank already showing and the next player loses their turn.",
+        rule:"Instead of beating the pile you may match it exactly — same count, same rank. This does not take the trick, but the next player in turn order is skipped." },
+      { id:"threeClubs", kind:"card", r:"3", s:"♣", name:"Three of clubs leads", cost:1,
+        tag:"Whoever holds it opens the first hand. Ends the argument about who starts.",
+        rule:"On the first hand, whoever holds the three of clubs leads, and their opening play must include it. On later hands the Scum leads." },
+      { id:"noFinishDirty", kind:"stamp", g:"✕", name:"You can't finish dirty", cost:2,
+        tag:"Going out on a two, a joker, or anything that clears the pile is illegal.",
+        rule:"You may not play your final card if it is a two, a joker, or any card whose power clears the pile. If you are left holding only such cards you must pass until you can shed them mid-trick. Anyone who goes out on a forbidden card is placed last for that hand." }
+    ]
+  },
+  {
+    id:"titles", name:"Titles and the hierarchy",
+    blurb:"The exchange is the engine. These decide how hard it is to escape it.",
+    items:[
+      { id:"miyako", kind:"stamp", g:"♛", name:"Fall from grace", jp:"都落ち", cost:2,
+        tag:"If the sitting President doesn't finish first, they drop straight to Scum.",
+        rule:"If the player who began the hand as President does not finish first, they are demoted directly to Scum for the next hand, regardless of when they actually went out. Everyone else takes their title from finishing order as normal." },
+      { id:"seats", kind:"stamp", g:"⌸", name:"Thrones and seating", cost:1,
+        tag:"Titles come with physical seats. You move when you're promoted.",
+        rule:"Seats are ranked. After each hand players physically move to the seat matching their new title, President first. Turn order always runs down the hierarchy from the President." },
+      { id:"scoring", kind:"stamp", g:"#", name:"Keep score across hands", cost:1,
+        tag:"Points per title, first to a target wins. Turns a loose evening into a session.",
+        rule:"Score each hand by title: President 4, Vice-President 3, Citizens 2, Vice-Scum 1, Scum 0. Play to an agreed total — 20 is roughly an hour. Highest score wins outright, whatever title you happen to hold at the end." }
+    ]
+  },
+  {
+    id:"table", name:"Life at the table",
+    blurb:"Neither of these touches the cards. Both of them decide what kind of evening it is.",
+    items:[
+      { id:"scumServes", kind:"stamp", g:"⌁", name:"The Scum serves", cost:1,
+        tag:"Scum shuffles, deals, clears the pile, and fetches. The President need not touch the cards.",
+        rule:"The Scum shuffles, deals every hand, clears the pile after each trick, and handles anything else the table needs. The President is not required to touch the cards." },
+      { id:"decree", kind:"stamp", g:"¶", name:"President's decree", cost:2,
+        tag:"Each hand the President imposes one table rule. It dies when they lose the office.",
+        rule:"At the start of each hand the President may declare one table rule of their choosing — a banned word, a required gesture, a naming convention. It binds everyone, including the President, and it expires the moment they lose the office. Breaking a decree costs you one card, dealt face-down from your hand to the Scum." }
+    ]
+  }
+];
+
+const BY_ID = {};
+GROUPS.forEach(g => g.items.forEach(m => { BY_ID[m.id] = m; m.groupId = g.id; }));
+const ALL_IDS = Object.keys(BY_ID);
+
+const PRESETS = {
+  base:       { on:[], exchange:"standard", pass:"locked" },
+  classic:    { on:["twosClear","fourBomb","completeSet","threeClubs","skipOnMatch","scumServes"], exchange:"standard", pass:"locked" },
+  daifugo:    { on:["eightsClear","jokers","spadeThree","revolution","miyako","suitsOrder","shibari","sequences","sevensGive","ninesReverse"], exchange:"standard", pass:"locked" },
+  fast:       { on:["twosClear","eightsClear","jokers","fourBomb","fivesSkip","skipOnMatch","scumServes","decree"], exchange:"light", pass:"reentry" },
+  everything: { on:ALL_IDS.filter(id => id !== "fourBomb" && id !== "completeSet"), exchange:"steep", pass:"reentry" }
+};
+
+const state = { on:new Set(), exchange:"standard", pass:"locked", players:5 };
+const has = id => state.on.has(id);
+
+/* ─────────── toggling, with dependencies and conflicts ─────────── */
+function dropDependents(id){
+  ALL_IDS.forEach(oid => {
+    const o = BY_ID[oid];
+    if (o.requires && o.requires.includes(id)) state.on.delete(oid);
+  });
+}
+function toggle(id){
+  const m = BY_ID[id];
+  if (has(id)){
+    state.on.delete(id);
+    dropDependents(id);
+  } else {
+    state.on.add(id);
+    (m.requires || []).forEach(r => state.on.add(r));
+    const killed = [];
+    ALL_IDS.forEach(oid => {
+      if (oid === id) return;
+      const o = BY_ID[oid];
+      const clash = (m.conflicts || []).includes(oid) || (o.conflicts || []).includes(id);
+      if (clash && state.on.delete(oid)){ killed.push(o.name); dropDependents(oid); }
+    });
+    if (killed.length) toast(killed.join(" and ") + " switched off — same trigger.");
+  }
+  clearPreset();
+  render();
+}
+function isBlocked(id){
+  const m = BY_ID[id];
+  if (has(id)) return false;
+  return ALL_IDS.some(oid => has(oid) &&
+    ((m.conflicts || []).includes(oid) || (BY_ID[oid].conflicts || []).includes(id)));
+}
+function blockedBy(id){
+  const m = BY_ID[id];
+  return ALL_IDS.filter(oid => has(oid) &&
+    ((m.conflicts || []).includes(oid) || (BY_ID[oid].conflicts || []).includes(id)))
+    .map(oid => BY_ID[oid].name);
+}
+function clearPreset(){ document.querySelectorAll(".preset").forEach(b => b.setAttribute("aria-pressed","false")); }
+
+/* ─────────── render: mechanics ─────────── */
+function chips(n){ let s=""; for (let i=1;i<=3;i++) s += `<span class="chip${i<=n?" filled":""}"></span>`; return s; }
+function token(m){
+  if (m.kind === "card"){
+    const red = m.s === "♥" || m.s === "♦";
+    return `<div class="tok card"><span class="r">${m.r}</span><span class="s${red?" red":""}">${m.s || "&nbsp;"}</span></div>`;
+  }
+  return `<div class="tok stamp">${m.g}</div>`;
+}
+function renderGroups(){
+  document.getElementById("groups").innerHTML = GROUPS.map(g => {
+    const live = g.items.filter(m => has(m.id)).length;
+    return `<section class="panel group">
+      <div class="group-head">
+        <div><h2>${g.name}</h2><p>${g.blurb}</p></div>
+        <span class="group-count${live?" live":""}">${live} of ${g.items.length} on</span>
+      </div>
+      ${g.items.map(m => {
+        const on = has(m.id), blocked = isBlocked(m.id);
+        let note = "", hot = false;
+        if (blocked){ note = "Blocked by " + blockedBy(m.id).join(" and ") + ". Switching this on replaces it."; hot = true; }
+        else if (m.requires) note = "Turns on " + m.requires.map(r => BY_ID[r].name.toLowerCase()).join(" and ") + " with it.";
+        return `<div class="mech${on?" on":""}${blocked?" blocked":""}" data-id="${m.id}" tabindex="0" role="switch" aria-checked="${on}" aria-label="${m.name}">
+          ${token(m)}
+          <div class="mech-body">
+            <div class="mech-title"><h3>${m.name}</h3>${m.jp?`<span class="jp">${m.jp}</span>`:""}</div>
+            <p class="mech-tag">${m.tag}</p>
+            ${note?`<p class="mech-note${hot?" hot":""}">${note}</p>`:""}
+          </div>
+          <div class="cost"><div class="chips" title="Teaching cost">${chips(m.cost)}</div><div class="sw"></div></div>
+        </div>`;
+      }).join("")}
+    </section>`;
+  }).join("");
+}
+
+/* ─────────── render: rank ladder ─────────── */
+function renderLadder(){
+  const rev = has("revolution");
+  const order = rev ? [...RANKS].reverse() : RANKS;
+  const el = document.getElementById("ranks");
+  const cards = order.map((r,i) => {
+    const cls = i === 0 ? "weak" : (i === order.length-1 && !has("jokers") ? "strong" : "");
+    return `<div class="rank ${cls}">${r}</div>`;
+  });
+  if (has("jokers")) cards.push(`<div class="rank strong">★</div>`);
+  el.innerHTML = cards.join("");
+  el.classList.toggle("flipped", rev);
+  document.getElementById("ladderState").textContent = rev ? "Revolution — order inverted" : "Standard";
+
+  const note = document.getElementById("ladderNote");
+  if (rev) note.innerHTML = "Four of a kind flips this whole row for the rest of the hand. <b>The threes you spent the game dumping become the best cards you own</b> — which is the entire point of the mechanic, and the reason a steep exchange stays playable.";
+  else if (has("spadeThree")) note.innerHTML = "Threes are worthless — <b>except the three of spades</b>, the only card in the deck that stops a joker.";
+  else if (has("jokers")) note.innerHTML = "Threes are worthless, twos are king, and jokers sit above even them. <b>Turn on Revolution</b> to see this row invert.";
+  else note.innerHTML = "Threes are worthless, twos are king. <b>Turn on Revolution</b> to see what happens to this row.";
+}
+
+/* ─────────── render: hierarchy rail ─────────── */
+function titles(n){
+  if (n <= 3) return ["President","Citizen","Scum"];
+  if (n === 4) return ["President","Vice-President","Vice-Scum","Scum"];
+  const mid = n - 4;
+  return ["President","Vice-President", mid === 1 ? "Citizen" : `Citizens ×${mid}`, "Vice-Scum","Scum"];
+}
+const EXCHANGE = {
+  none:     { up:0, down:0 },
+  light:    { up:1, down:1 },
+  standard: { up:2, down:2 },
+  steep:    { up:3, down:3 },
+  tribute:  { up:2, down:1 }
+};
+function renderRail(){
+  const t = titles(state.players), n = t.length;
+  document.getElementById("seats").innerHTML = t.map((name,i) => {
+    const cls = i === 0 ? "top" : (i === n-1 ? "bottom" : "");
+    const ord = i === 0 ? "1st out" : (i === n-1 ? "Last" : (i === 1 ? "2nd out" : "middle"));
+    return `<div class="seat ${cls}"><span class="t">${name}</span><span class="n">${ord}</span></div>`;
+  }).join("");
+  document.getElementById("railSub").textContent = `${state.players} players, ${state.players >= 7 ? "two decks" : "one deck"}`;
+
+  const e = EXCHANGE[state.exchange], flow = document.getElementById("flow");
+  flow.classList.toggle("dead", state.exchange === "none");
+  if (state.exchange === "none"){
+    document.getElementById("flowLeft").innerHTML = "<b>No exchange</b>";
+    document.getElementById("flowRight").textContent = "titles are cosmetic";
+  } else {
+    document.getElementById("flowLeft").innerHTML = `Scum sends <b>${e.up} best</b>`;
+    document.getElementById("flowRight").innerHTML = `President returns <b>${e.down} of choice</b>`;
+  }
+}
+
+/* ─────────── the rule sheet ─────────── */
+function exchangeText(){
+  switch(state.exchange){
+    case "none": return "There is no exchange. Titles are bragging rights and nothing else.";
+    case "light": return "Before each hand the Scum passes their single best card to the President, who returns any one card of their choosing. Everyone else keeps what they were dealt.";
+    case "steep": return "Before each hand the Scum passes their three best cards to the President, and the Vice-Scum passes their two best to the Vice-President. Each returns the same number of cards of their choosing.";
+    case "tribute": return "Before each hand the Scum passes their two best cards to the President, who returns only one card of their choosing; the Vice pair do the same with one and one. The table's wealth is not conserved.";
+    default: return "Before each hand the Scum passes their two best cards to the President, and the Vice-Scum passes their single best to the Vice-President. Each returns the same number of cards of their choosing — usually junk.";
+  }
+}
+function buildSheet(){
+  const p = state.players, twoDecks = p >= 7, secs = [];
+
+  secs.push({ h:"The table", body:[
+    `${p} players. Use ${twoDecks ? "two standard decks shuffled together" : "one standard 52-card deck"}${has("jokers") ? (twoDecks ? ", plus four jokers" : ", plus two jokers") : ""}. Deal the whole deck out one card at a time. Hands will be uneven, and that is fine.`,
+    twoDecks ? "With two decks, identical cards do not beat each other: a play must be strictly higher, so a duplicate can never be topped by its twin." : null,
+    has("threeClubs") ? BY_ID.threeClubs.rule : "The player to the dealer's left leads the first trick. On later hands the Scum leads."
+  ].filter(Boolean)});
+
+  const rank = [ has("revolution")
+    ? "Ranks run 3 low, then 4, 5, 6, 7, 8, 9, 10, J, Q, K, A, up to 2 high — until a revolution inverts them."
+    : "Ranks run 3 low, then 4, 5, 6, 7, 8, 9, 10, J, Q, K, A, up to 2 high." ];
+  if (has("jokers")) rank.push("Jokers sit above everything.");
+  if (has("suitsOrder")) rank.push(BY_ID.suitsOrder.rule);
+  secs.push({ h:"Rank order", body:rank });
+
+  const trick = [
+    "The leader plays any single card, or any set of cards sharing a rank — a pair, a triple, four of a kind. That sets the count for the trick.",
+    "Going around, each player must either play the same number of cards at a strictly higher rank, or pass.",
+    state.pass === "reentry"
+      ? "Passing costs nothing: if the trick comes back around, you may play again."
+      : "Once you pass you are out of the trick and cannot play again until the pile clears.",
+    "When everyone still in has passed, the last player to lay cards takes the trick. Clear the pile face-down and they lead the next one."
+  ];
+  if (has("sequences")) trick.push(BY_ID.sequences.rule);
+  if (has("skipOnMatch")) trick.push(BY_ID.skipOnMatch.rule);
+  if (has("shibari")) trick.push(BY_ID.shibari.rule);
+  secs.push({ h:"Playing a trick", body:trick });
+
+  const powers = ["twosClear","eightsClear","spadeThree","sevensGive","ninesReverse","fivesSkip","fourBomb","completeSet","revolution"]
+    .filter(has).map(id => `<span class="name">${BY_ID[id].name}.</span> ${BY_ID[id].rule}`);
+  if (powers.length) secs.push({ h:"Cards with powers", body:powers });
+
+  const ending = ["Play until your hand is empty. First out is President, second is Vice-President, last is Scum, second-to-last is Vice-Scum, everyone between is a Citizen. The hand runs until one player is left holding cards."];
+  if (has("noFinishDirty")) ending.push(BY_ID.noFinishDirty.rule);
+  if (has("miyako")) ending.push(BY_ID.miyako.rule);
+  ending.push(exchangeText());
+  secs.push({ h:"Titles and the exchange", body:ending });
+
+  const social = ["seats","scoring","scumServes","decree"].filter(has)
+    .map(id => `<span class="name">${BY_ID[id].name}.</span> ${BY_ID[id].rule}`);
+  if (social.length) secs.push({ h:"Table rules", body:social });
+
+  return secs;
+}
+
+/* ─────────── what the combination actually does ─────────── */
+function buildNotes(){
+  const n = [], p = state.players;
+  const clears = ["twosClear","eightsClear","fourBomb","completeSet","spadeThree"].filter(has).length;
+
+  if (clears >= 3) n.push(`You have ${clears} separate ways to wipe the pile. Tricks will rarely go around twice, which turns the game into hand-shape management rather than reading the table. Good at ${p>=6?"this table size":"six or more"}, twitchy below five.`);
+  if (clears === 0 && !has("revolution")) n.push("Nothing clears the pile early, so tricks run long and whoever holds the twos owns the endgame. Predictable — and the easiest version to teach cold.");
+  if (has("suitsOrder") && has("shibari")) n.push("Suit hierarchy plus suit lock is the most constrained pairing here. Expect long chains of passes late in a trick, and expect half the table to forget the lock exists. Teach them together or not at all.");
+  if (has("revolution") && has("suitsOrder")) n.push("Decide out loud whether a revolution also inverts suit order. Written here: it does not — only ranks flip.");
+  if (has("revolution") && state.exchange !== "none") n.push("Revolution is the natural counterweight to the exchange: the junk the Scum was forced to accept becomes the strongest hand at the table. This pairing is why the Japanese version sustains a steep exchange without stalling out.");
+  if (has("sequences") && state.exchange !== "none") n.push("Runs reward hoarding consecutive cards, but the exchange strips singletons rather than sequences — so the President's advantage compounds. Add Fall from grace or scoring to keep the table honest.");
+  if (state.exchange === "none") n.push("With no exchange the hierarchy has no mechanical teeth and the titles are pure theatre. Fine for a round, thin across a whole evening.");
+  if (state.exchange === "steep" && !has("miyako") && !has("revolution")) n.push("A three-and-two exchange is close to deterministic: the President repeats most hands. Pair it with Fall from grace or Revolution, or expect one person to hold the office all night.");
+  if (state.exchange === "tribute") n.push("An unequal exchange bleeds cards toward the top of the table. Hands are redealt each round so it never compounds mechanically — but it will feel brutal to whoever is stuck at the bottom, which is arguably the point.");
+  if (has("miyako") && state.exchange === "none") n.push("Fall from grace punishes a President who has no structural advantage to begin with. Turn the exchange back on, or this is just a tax on whoever is winning.");
+  if (state.pass === "reentry" && (has("skipOnMatch") || has("ninesReverse"))) n.push("Re-entry on top of skips or reversals makes turn order genuinely hard to track. Nominate one person to call whose turn it is.");
+  if (has("sevensGive") && state.exchange !== "none") n.push("Seven gift is a second, hidden exchange running all hand long. It is the sharpest tactical card here and the one new players misplay most — they dump junk when they should be dumping the card that completes someone else's bomb.");
+  if (has("ninesReverse") && has("fivesSkip")) n.push("Reversal plus skips means the player on your left is rarely the player who acts next. Fun, and roughly 20% slower.");
+  if (has("decree")) n.push("President's decree has no effect on the cards and an enormous effect on the table. It is the switch that decides what kind of evening this is.");
+  if (has("scoring") && has("miyako")) n.push("Scoring plus Fall from grace is the competitive configuration: the title stops being the goal and becomes a resource you spend risk on.");
+  if (p >= 7) n.push(`At ${p} players you need two decks and hands run seven or eight cards. Consider a steeper exchange so the extra bodies don't flatten the hierarchy into noise.`);
+  if (p <= 3) n.push("Three players is thin — only President, Citizen and Scum exist, so the exchange swings almost every hand. Playable, but the game wants five.");
+  if (has("noFinishDirty") && !has("twosClear") && !has("jokers")) n.push("You can't finish dirty is doing very little here: you have left almost no power cards in the deck to be caught holding.");
+  if (!n.length) n.push("Nothing here fights with anything else. This is a clean, teachable set and a good place to start a table that has never played.");
+  return n;
+}
+
+/* ─────────── complexity ─────────── */
+function score(){
+  let s = 0;
+  state.on.forEach(id => s += BY_ID[id].cost);
+  if (state.pass === "reentry") s += 1;
+  if (state.exchange === "steep" || state.exchange === "tribute") s += 1;
+  return s;
+}
+function tier(s){
+  if (s === 0) return ["Kitchen table","The unadorned game. Anyone can be playing a minute after sitting down."];
+  if (s <= 5)  return ["House rules","Light. One or two exceptions to remember, no interactions to untangle."];
+  if (s <= 11) return ["Serious table","Where most regular groups land. Expect one hand of confusion, then it clicks."];
+  if (s <= 18) return ["Deep cut","Substantial. Play a practice hand with the sheet visible before anything counts."];
+  return ["Unhinged","More exceptions than base rules. Genuinely great with the right table, unplayable with the wrong one."];
+}
+
+/* ─────────── render ─────────── */
+function render(){
+  renderGroups(); renderLadder(); renderRail();
+
+  const secs = buildSheet();
+  document.getElementById("sheetBody").innerHTML = secs.map((s,i) =>
+    `<div class="sec"><h3><span>${String(i+1).padStart(2,"0")}</span>${s.h}</h3>${s.body.map(b=>`<p>${b}</p>`).join("")}</div>`).join("");
+
+  document.getElementById("notesBox").innerHTML = `<h3>What this combination does</h3>` +
+    buildNotes().map(t => `<div class="note"><span class="mk">→</span><span>${t}</span></div>`).join("");
+
+  const s = score(), [label, legend] = tier(s);
+  document.getElementById("gaugeLabel").textContent = label;
+  document.getElementById("gaugeLegend").textContent = legend;
+  document.getElementById("gaugeTeach").textContent = `${Math.round(4 + s * 1.4)} min to teach`;
+  document.getElementById("gaugeFill").style.width = Math.min(100, (s/26)*100) + "%";
+  document.getElementById("sheetTitle").textContent =
+    state.on.size === 0 ? "The base game" : `Presidents, ${state.on.size} rule${state.on.size===1?"":"s"} deep`;
+  document.getElementById("printMeta").textContent = `${state.players} players · ${label} · ${Math.round(4 + s*1.4)} min to teach`;
+
+  syncHash();
+}
+
+/* ─────────── export ─────────── */
+const strip = s => s.replace(/<[^>]+>/g,"");
+function asText(){
+  const s = score();
+  const out = [`PRESIDENTS — HOUSE RULES`, `${state.players} players · ${tier(s)[0]} · ${Math.round(4+s*1.4)} min to teach`, ""];
+  buildSheet().forEach((sec,i) => {
+    out.push(`${String(i+1).padStart(2,"0")}  ${sec.h.toUpperCase()}`);
+    sec.body.forEach(b => out.push("    " + strip(b)));
+    out.push("");
+  });
+  out.push("NOTES");
+  buildNotes().forEach(t => out.push("  - " + t));
+  return out.join("\n");
+}
+
+/* ─────────── shareable state in the URL ─────────── */
+function syncHash(){
+  try {
+    const h = `#p=${state.players}&x=${state.exchange}&s=${state.pass}` +
+      (state.on.size ? `&m=${[...state.on].join(",")}` : "");
+    if (location.hash !== h) history.replaceState(null, "", h);
+  } catch(e){ /* sandboxed frame — sharing degrades to copy-only */ }
+}
+function readHash(){
+  try {
+    const q = new URLSearchParams(location.hash.slice(1));
+    if (![...q.keys()].length) return false;
+    const p = parseInt(q.get("p"), 10);
+    if (!isNaN(p)) state.players = Math.min(12, Math.max(3, p));
+    if (EXCHANGE[q.get("x")]) state.exchange = q.get("x");
+    if (["locked","reentry"].includes(q.get("s"))) state.pass = q.get("s");
+    (q.get("m") || "").split(",").filter(id => BY_ID[id]).forEach(id => state.on.add(id));
+    return true;
+  } catch(e){ return false; }
+}
+
+/* ─────────── plumbing ─────────── */
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), 2400);
+}
+async function copy(text, okMsg){
+  try { await navigator.clipboard.writeText(text); toast(okMsg); return; } catch(e){}
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.cssText = "position:fixed;opacity:0;top:0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); toast(okMsg); }
+  catch(e){ toast("Copy is blocked here — select the sheet and copy by hand."); }
+  ta.remove();
+}
+
+const groupsEl = document.getElementById("groups");
+groupsEl.addEventListener("click", e => {
+  const row = e.target.closest(".mech");
+  if (row) toggle(row.dataset.id);
+});
+groupsEl.addEventListener("keydown", e => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const row = e.target.closest(".mech");
+  if (row){ e.preventDefault(); toggle(row.dataset.id); }
+});
+
+document.querySelectorAll(".preset").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const p = PRESETS[btn.dataset.preset];
+    state.on = new Set(p.on);
+    state.exchange = p.exchange;
+    state.pass = p.pass;
+    document.getElementById("exchange").value = p.exchange;
+    document.getElementById("passRule").value = p.pass;
+    clearPreset();
+    btn.setAttribute("aria-pressed","true");
+    render();
+  });
+});
+
+document.getElementById("players").addEventListener("input", e => {
+  const v = parseInt(e.target.value, 10);
+  state.players = isNaN(v) ? 5 : Math.min(12, Math.max(3, v));
+  render();
+});
+document.getElementById("exchange").addEventListener("change", e => { state.exchange = e.target.value; clearPreset(); render(); });
+document.getElementById("passRule").addEventListener("change", e => { state.pass = e.target.value; clearPreset(); render(); });
+
+document.getElementById("copyBtn").addEventListener("click", () => copy(asText(), "Rule sheet copied."));
+document.getElementById("shareBtn").addEventListener("click", () => {
+  syncHash();
+  copy(location.href, "Link copied — it carries this exact ruleset.");
+});
+document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+/* boot */
+const restored = readHash();
+document.getElementById("players").value = state.players;
+document.getElementById("exchange").value = state.exchange;
+document.getElementById("passRule").value = state.pass;
+if (!restored) document.querySelector('[data-preset="base"]').setAttribute("aria-pressed","true");
+render();
+</script>
+</body>
+</html>
